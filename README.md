@@ -1,59 +1,32 @@
-# 1124
 import java.io.*;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 
-public class EchoServer {
-    private ServerSocket serverSocket;
-
-    public EchoServer(int port) throws IOException {
-        serverSocket = new ServerSocket(port);
-        System.out.println("Эхо-сервер запущен на порту " + port);
-    }
-
-    public void start() {
-        while (true) {
-            try {
-                Socket clientSocket = serverSocket.accept();
-                System.out.println("Клиент подключен: " + clientSocket.getInetAddress());
-                new Thread(() -> handleClient(clientSocket)).start();
-            } catch (IOException e) {
-                System.err.println("Ошибка при принятии подключения: " + e.getMessage());
-            }
-        }
-    }
-
-    private void handleClient(Socket clientSocket) {
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-             PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) { // autoFlush = true
-
-            String inputLine;
-            while ((inputLine = in.readLine()) != null) {
-                System.out.println("Получено: " + inputLine);
-                
-                // Вариант 1: Базовый эхо — возвращаем строку дважды через пробел
-                String response = inputLine + " " + inputLine;
-                out.println(response);
-                System.out.println("Отправлено: " + response);
-            }
-        } catch (IOException e) {
-            System.err.println("Ошибка при обработке клиента: " + e.getMessage());
-        } finally {
-            try {
-                clientSocket.close();
-                System.out.println("Клиент отключен");
-            } catch (IOException e) {
-                System.err.println("Ошибка при закрытии сокета: " + e.getMessage());
-            }
-        }
-    }
+public class Client {
+    private static final String HOST = "localhost";
+    private static final int PORT = 12345;
 
     public static void main(String[] args) {
-        int port = 8080; // стандартный порт, можно изменить
-        try {
-            EchoServer server = new EchoServer(port);
-            server.start();
+        try (Socket socket = new Socket(HOST, PORT);
+             BufferedInputStream bufferedInput = new BufferedInputStream(socket.getInputStream());
+             BufferedOutputStream bufferedOutput = new BufferedOutputStream(socket.getOutputStream());
+             InputStreamReader charInput = new InputStreamReader(bufferedInput, StandardCharsets.UTF_8);
+             OutputStreamWriter charOutput = new OutputStreamWriter(bufferedOutput, StandardCharsets.UTF_8);
+             BufferedReader in = new BufferedReader(charInput);
+             PrintWriter out = new PrintWriter(charOutput, true);
+             BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in))) {
+            
+            System.out.println("Подключено к серверу. Вводите строки (Ctrl+D/Ctrl+C для выхода):");
+            String userInput;
+            while ((userInput = stdIn.readLine()) != null) {
+                out.println(userInput);
+                String response = in.readLine();
+                System.out.println("Ответ сервера: " + response);
+            }
+        } catch (UnknownHostException e) {
+            System.err.println("Неизвестный хост: " + HOST);
         } catch (IOException e) {
-            System.err.println("Не удалось запустить сервер: " + e.getMessage());
+            System.err.println("Ошибка ввода-вывода: " + e.getMessage());
         }
     }
 }
